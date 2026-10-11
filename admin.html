@@ -111,6 +111,22 @@ tbody td.td-main{color:var(--ivory);font-weight:500}
 .st-delivered{color:#6EE7B7}
 .st-cancelled{color:#F87171}
 
+/* ── GST REPORTS ────────────────────────────────── */
+.gst-card{background:#161614;border:1px solid rgba(255,255,255,.07);padding:28px;margin-bottom:24px}
+.gst-card-title{font-size:13px;font-weight:700;color:var(--ivory);margin-bottom:6px;letter-spacing:-.01em}
+.gst-card-sub{font-size:12px;color:var(--stone);margin-bottom:20px;line-height:1.6}
+.f-group input[type=month]{color-scheme:dark}
+.gst-period{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.gst-period .f-group{min-width:200px}
+.gst-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.07);margin-top:24px}
+.gst-stat{background:#0F0F0E;padding:18px 20px}
+.gst-stat-label{font-size:9px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:var(--stone);margin-bottom:8px}
+.gst-stat-value{font-size:18px;font-weight:600;color:var(--ivory);letter-spacing:-.01em}
+.gst-note{font-size:11.5px;color:var(--stone);margin-top:16px;line-height:1.7}
+.gst-note.warn{color:#FCD34D}
+.gst-sheets{font-size:12px;color:var(--stone-l);line-height:1.9;margin-top:4px}
+.gst-sheets b{color:var(--ivory);font-weight:600}
+
 @media(max-width:900px){
   .admin-bar{flex-wrap:wrap;gap:10px}
   .form-grid{grid-template-columns:1fr}
@@ -165,6 +181,7 @@ tbody td.td-main{color:var(--ivory);font-weight:500}
   <div class="admin-tabs">
     <button class="admin-tab active" data-tab="products" onclick="switchTab('products')">Products</button>
     <button class="admin-tab" data-tab="orders" onclick="switchTab('orders')">Orders</button>
+    <button class="admin-tab" data-tab="gst" onclick="switchTab('gst')">GST Reports</button>
   </div>
 
   <!-- Products Panel -->
@@ -271,6 +288,71 @@ tbody td.td-main{color:var(--ivory);font-weight:500}
     </div>
   </div>
 
+  <!-- GST Reports Panel -->
+  <div class="admin-panel" id="panelGst">
+    <div class="panel-head">
+      <div class="panel-title">GSTR-1 Sales Export</div>
+    </div>
+
+    <div class="gst-card">
+      <div class="gst-card-title">Download month-wise sales data</div>
+      <div class="gst-card-sub">Pick a return period to preview it, then download the Excel workbook for GSTR-1 filing.</div>
+      <div class="gst-period">
+        <div class="f-group">
+          <label>Return Period (Month)</label>
+          <input type="month" id="gstMonth" onchange="previewGstr1()">
+        </div>
+        <button class="btn-add" id="gstDownloadBtn" onclick="downloadGstr1()">Download GSTR-1 (.xlsx)</button>
+      </div>
+      <div class="gst-stats" id="gstStats"></div>
+      <div class="gst-note" id="gstNote"></div>
+      <div class="form-err" id="gstErr"></div>
+    </div>
+
+    <div class="gst-card">
+      <div class="gst-card-title">Business &amp; tax settings</div>
+      <div class="gst-card-sub">These settings decide intra-state (CGST + SGST) vs inter-state (IGST) tax and the default HSN. They are saved in this browser. A product's own <code>hsn_code</code> / <code>gst_rate</code> overrides the defaults.</div>
+      <div class="form-grid">
+        <div class="f-group">
+          <label>Seller GSTIN</label>
+          <input type="text" id="gstSellerGstin" placeholder="29ABCDE1234F1Z5" maxlength="15" oninput="this.value=this.value.toUpperCase();saveGstSettings()">
+        </div>
+        <div class="f-group">
+          <label>Seller State *</label>
+          <select id="gstSellerState" onchange="saveGstSettings()"></select>
+        </div>
+        <div class="f-group">
+          <label>Default HSN</label>
+          <input type="text" id="gstHsn" placeholder="3926" oninput="saveGstSettings()">
+        </div>
+        <div class="f-group">
+          <label>Default GST Rate (%)</label>
+          <select id="gstRate" onchange="saveGstSettings()">
+            <option value="0">0</option><option value="5">5</option><option value="12">12</option>
+            <option value="18">18</option><option value="28">28</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:16px">
+        <label class="f-check"><input type="checkbox" id="gstInclusive" checked onchange="saveGstSettings()"> Selling prices include GST</label>
+      </div>
+    </div>
+
+    <div class="gst-card">
+      <div class="gst-card-title">What's in the workbook</div>
+      <div class="gst-sheets">
+        <b>Summary</b> — period totals, tax split, and order counts<br>
+        <b>Sales Register</b> — every invoice line: customer, address, place of supply, product, HSN, qty, taxable value, IGST / CGST / SGST<br>
+        <b>Invoices</b> — one row per invoice with totals, status, and payment reference<br>
+        <b>b2cl</b> — inter-state B2C invoices above ₹1,00,000 (GSTR-1 Table 5)<br>
+        <b>b2cs</b> — other B2C sales by place of supply and rate (GSTR-1 Table 7)<br>
+        <b>exp</b> — international orders (GSTR-1 Table 6A)<br>
+        <b>hsn</b> — HSN-wise summary (GSTR-1 Table 12)<br>
+        <b>docs</b> — invoice series issued and cancelled (GSTR-1 Table 13)
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script src="js/auth.js" defer></script>
@@ -291,6 +373,7 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('adminWrap').style.display = 'block';
   loadProducts();
   loadOrders();
+  initGst();
 });
 
 // ── Tabs ────────────────────────────────────────────────────────────────
@@ -298,6 +381,8 @@ function switchTab(tab) {
   document.querySelectorAll('.admin-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
   document.getElementById('panelProducts').classList.toggle('active', tab === 'products');
   document.getElementById('panelOrders').classList.toggle('active', tab === 'orders');
+  document.getElementById('panelGst').classList.toggle('active', tab === 'gst');
+  if (tab === 'gst') previewGstr1();
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────
@@ -463,12 +548,16 @@ async function softDeleteProduct(id, name) {
 }
 
 // ── ORDERS ───────────────────────────────────────────────────────────────
+let _orders = null;
+
 async function loadOrders() {
   try {
     const res = await fetch(API_BASE + '/api/admin/orders', { headers: apiHeaders() });
     if (!res.ok) throw new Error('Failed');
     const { orders } = await res.json();
+    _orders = orders;
     renderOrders(orders);
+    previewGstr1();
   } catch (err) {
     document.getElementById('ordersBody').innerHTML =
       '<tr><td colspan="6" class="tbl-empty">Could not load orders — ' + err.message + '</td></tr>';
@@ -516,6 +605,361 @@ async function updateStatus(orderId, sel) {
   } finally {
     sel.disabled = false;
   }
+}
+
+// ── GST REPORTS (GSTR-1) ────────────────────────────────────────────────
+const GST_STATES = [
+  ['01','Jammu and Kashmir'],['02','Himachal Pradesh'],['03','Punjab'],['04','Chandigarh'],
+  ['05','Uttarakhand'],['06','Haryana'],['07','Delhi'],['08','Rajasthan'],['09','Uttar Pradesh'],
+  ['10','Bihar'],['11','Sikkim'],['12','Arunachal Pradesh'],['13','Nagaland'],['14','Manipur'],
+  ['15','Mizoram'],['16','Tripura'],['17','Meghalaya'],['18','Assam'],['19','West Bengal'],
+  ['20','Jharkhand'],['21','Odisha'],['22','Chhattisgarh'],['23','Madhya Pradesh'],['24','Gujarat'],
+  ['26','Dadra and Nagar Haveli and Daman and Diu'],['27','Maharashtra'],['29','Karnataka'],['30','Goa'],
+  ['31','Lakshadweep'],['32','Kerala'],['33','Tamil Nadu'],['34','Puducherry'],
+  ['35','Andaman and Nicobar Islands'],['36','Telangana'],['37','Andhra Pradesh'],['38','Ladakh'],
+  ['97','Other Territory']
+];
+// Common short forms / old names customers type into address forms
+const GST_STATE_ALIASES = {
+  'jk':'01','j&k':'01','jammu & kashmir':'01','hp':'02','pb':'03','ch':'04','uk':'05','uttaranchal':'05',
+  'hr':'06','dl':'07','new delhi':'07','nct of delhi':'07','rj':'08','up':'09','br':'10','sk':'11',
+  'ar':'12','nl':'13','mn':'14','mz':'15','tr':'16','ml':'17','as':'18','wb':'19','jh':'20',
+  'od':'21','or':'21','orissa':'21','cg':'22','ct':'22','mp':'23','gj':'24','dn':'26','dd':'26',
+  'daman and diu':'26','dadra and nagar haveli':'26','mh':'27','ka':'29','ga':'30','ld':'31',
+  'kl':'32','tn':'33','py':'34','pondicherry':'34','an':'35','andaman & nicobar islands':'35',
+  'ts':'36','tg':'36','ap':'37','la':'38'
+};
+const GST_BILLABLE = ['confirmed', 'processing', 'shipped', 'delivered'];
+const GST_SETTINGS_KEY = 'ta_gst_settings';
+const B2CL_LIMIT = 100000;
+
+function r2(n) { return Math.round((Number(n) + Number.EPSILON) * 100) / 100; }
+function posLabel(code) {
+  const s = GST_STATES.find(x => x[0] === code);
+  return s ? s[0] + '-' + s[1] : '';
+}
+
+function initGst() {
+  const sel = document.getElementById('gstSellerState');
+  sel.innerHTML = '<option value="">Select…</option>'
+    + GST_STATES.map(s => '<option value="' + s[0] + '">' + s[0] + ' — ' + s[1] + '</option>').join('');
+
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(GST_SETTINGS_KEY) || '{}'); } catch (_) {}
+  document.getElementById('gstSellerGstin').value = saved.gstin || '';
+  sel.value = saved.state || (saved.gstin ? saved.gstin.slice(0, 2) : '');
+  document.getElementById('gstHsn').value = saved.hsn || '3926';
+  document.getElementById('gstRate').value = saved.rate != null ? String(saved.rate) : '18';
+  document.getElementById('gstInclusive').checked = saved.inclusive !== false;
+
+  // Default to the previous month — the period normally being filed
+  const now = new Date();
+  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  document.getElementById('gstMonth').value = prev.getFullYear() + '-' + String(prev.getMonth() + 1).padStart(2, '0');
+  document.getElementById('gstMonth').max = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+}
+
+function getGstSettings() {
+  return {
+    gstin: document.getElementById('gstSellerGstin').value.trim(),
+    state: document.getElementById('gstSellerState').value,
+    hsn: document.getElementById('gstHsn').value.trim() || '3926',
+    rate: Number(document.getElementById('gstRate').value),
+    inclusive: document.getElementById('gstInclusive').checked,
+  };
+}
+
+function saveGstSettings() {
+  const s = getGstSettings();
+  // GSTIN's first two digits are the state code — keep them in sync
+  if (/^\d{2}/.test(s.gstin) && GST_STATES.some(x => x[0] === s.gstin.slice(0, 2)) && s.state !== s.gstin.slice(0, 2)) {
+    s.state = s.gstin.slice(0, 2);
+    document.getElementById('gstSellerState').value = s.state;
+  }
+  try { localStorage.setItem(GST_SETTINGS_KEY, JSON.stringify(s)); } catch (_) {}
+  previewGstr1();
+}
+
+// Resolve the customer's state code from a free-form shipping address
+function resolveStateCode(addr) {
+  if (!addr) return '';
+  const raw = String(addr.state || addr.state_code || addr.region || '').trim().toLowerCase();
+  if (!raw) return '';
+  if (/^\d{1,2}$/.test(raw)) {
+    const c = raw.padStart(2, '0');
+    return GST_STATES.some(s => s[0] === c) ? c : '';
+  }
+  const clean = raw.replace(/^in-/, '');
+  if (GST_STATE_ALIASES[clean]) return GST_STATE_ALIASES[clean];
+  const hit = GST_STATES.find(s => s[1].toLowerCase() === clean || s[1].toLowerCase().replace(/ and /g, ' & ') === clean);
+  return hit ? hit[0] : '';
+}
+
+function isForeign(addr) {
+  const c = String((addr && addr.country) || '').trim().toLowerCase();
+  return !!c && !['in', 'ind', 'india'].includes(c);
+}
+
+// Orders are stored in UTC — GST periods follow Indian Standard Time
+function istParts(iso) {
+  const d = new Date(new Date(iso).getTime() + 330 * 60000);
+  return { y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate() };
+}
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function gstDate(iso) {
+  const p = istParts(iso);
+  return String(p.d).padStart(2, '0') + '-' + MON[p.m - 1] + '-' + p.y;
+}
+function invoiceNo(o) { return 'TA-' + o.id.slice(0, 8).toUpperCase(); }
+
+function buildGstr1(orders, period, cfg) {
+  const [py, pm] = period.split('-').map(Number);
+  const inMonth = orders.filter(o => { const p = istParts(o.created_at); return p.y === py && p.m === pm; })
+    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+  const billable  = inMonth.filter(o => GST_BILLABLE.includes(o.status));
+  const cancelled = inMonth.filter(o => o.status === 'cancelled');
+  const unpaid    = inMonth.filter(o => !GST_BILLABLE.includes(o.status) && o.status !== 'cancelled');
+
+  const lines = [], invoices = [], warnings = new Set();
+
+  billable.forEach(o => {
+    const addr = (o.shipping_address && typeof o.shipping_address === 'object') ? o.shipping_address : {};
+    const prof = o.profiles || {};
+    const foreign = isForeign(addr);
+    let pos = foreign ? '96' : resolveStateCode(addr);
+    let posAssumed = false;
+    if (!foreign && !pos) { pos = cfg.state; posAssumed = true; warnings.add('missing-state'); }
+    const supply = foreign ? 'Export' : (pos === cfg.state ? 'Intra-State' : 'Inter-State');
+
+    const items = (o.order_items || []).map(it => {
+      const p = it.products || {};
+      return {
+        name: p.name || 'Product', hsn: String(p.hsn_code || cfg.hsn),
+        rate: p.gst_rate != null ? Number(p.gst_rate) : cfg.rate,
+        qty: Number(it.quantity) || 0, unit: Number(it.unit_price) || 0,
+        notes: it.customization_notes || '',
+      };
+    });
+    // Anything the order total carries beyond its items (shipping, packing) is billed
+    // with the principal item's HSN and rate — composite supply.
+    const itemsSum = items.reduce((s, i) => s + i.qty * i.unit, 0);
+    const extra = r2(Number(o.total_amount || 0) - itemsSum);
+    if (extra > 0.01) {
+      const main = items.slice().sort((a, b) => b.qty * b.unit - a.qty * a.unit)[0] || { hsn: cfg.hsn, rate: cfg.rate };
+      items.push({ name: 'Shipping & handling charges', hsn: main.hsn, rate: main.rate, qty: 1, unit: extra, notes: '' });
+    } else if (extra < -0.01) {
+      warnings.add('total-mismatch');
+    }
+
+    const inv = { no: invoiceNo(o), order: o, pos, posAssumed, supply, taxable: 0, igst: 0, cgst: 0, sgst: 0, value: 0, rates: {} };
+    items.forEach(it => {
+      const gross = r2(it.qty * it.unit);
+      const rate = foreign ? 0 : it.rate;             // exports under LUT carry no tax
+      const taxable = r2(cfg.inclusive ? gross / (1 + rate / 100) : gross);
+      const tax = r2(cfg.inclusive ? gross - taxable : taxable * rate / 100);
+      const igst = supply === 'Inter-State' ? tax : 0;
+      const cgst = supply === 'Intra-State' ? r2(tax / 2) : 0;
+      const sgst = supply === 'Intra-State' ? r2(tax - cgst) : 0;
+      const total = r2(taxable + igst + cgst + sgst);
+      lines.push({ inv, ...it, rate, gross, taxable, igst, cgst, sgst, total, exportRate: it.rate });
+      inv.taxable = r2(inv.taxable + taxable); inv.igst = r2(inv.igst + igst);
+      inv.cgst = r2(inv.cgst + cgst); inv.sgst = r2(inv.sgst + sgst); inv.value = r2(inv.value + total);
+      inv.rates[rate] = r2((inv.rates[rate] || 0) + taxable);
+    });
+    if (!items.length) warnings.add('no-items');
+    invoices.push(inv);
+  });
+
+  const totals = invoices.reduce((t, i) => ({
+    value: r2(t.value + i.value), taxable: r2(t.taxable + i.taxable),
+    igst: r2(t.igst + i.igst), cgst: r2(t.cgst + i.cgst), sgst: r2(t.sgst + i.sgst),
+  }), { value: 0, taxable: 0, igst: 0, cgst: 0, sgst: 0 });
+
+  return { period, py, pm, billable, cancelled, unpaid, invoices, lines, totals, warnings, cfg };
+}
+
+function previewGstr1() {
+  const statsEl = document.getElementById('gstStats');
+  const noteEl  = document.getElementById('gstNote');
+  const period  = document.getElementById('gstMonth').value;
+  document.getElementById('gstErr').classList.remove('show');
+  if (!period) { statsEl.innerHTML = ''; noteEl.textContent = ''; return; }
+  if (!_orders) { statsEl.innerHTML = ''; noteEl.className = 'gst-note'; noteEl.textContent = 'Loading orders…'; return; }
+
+  const cfg = getGstSettings();
+  const r = buildGstr1(_orders, period, cfg);
+  const stat = (label, value) => '<div class="gst-stat"><div class="gst-stat-label">' + label + '</div><div class="gst-stat-value">' + value + '</div></div>';
+  statsEl.innerHTML =
+      stat('Invoices', r.invoices.length)
+    + stat('Invoice Value', fmtPrice(r.totals.value))
+    + stat('Taxable Value', fmtPrice(r.totals.taxable))
+    + stat('IGST', fmtPrice(r.totals.igst))
+    + stat('CGST + SGST', fmtPrice(r2(r.totals.cgst + r.totals.sgst)))
+    + stat('Cancelled', r.cancelled.length);
+
+  const notes = [];
+  if (!cfg.state) notes.push('Select the seller state below — it decides IGST vs CGST + SGST.');
+  if (r.warnings.has('missing-state')) notes.push('Some orders have no state in the shipping address. They are treated as intra-state and marked in the Remarks column.');
+  if (r.warnings.has('total-mismatch')) notes.push('Some order totals are lower than their item totals (a discount?). Check the Remarks column in the Invoices sheet.');
+  if (r.unpaid.length) notes.push(r.unpaid.length + ' unpaid (pending) order' + (r.unpaid.length > 1 ? 's are' : ' is') + ' left out.');
+  noteEl.className = 'gst-note' + (notes.length && (!cfg.state || r.warnings.size) ? ' warn' : '');
+  noteEl.textContent = notes.join(' ');
+}
+
+let _xlsxLoading = null;
+function loadXlsx() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  if (!_xlsxLoading) {
+    _xlsxLoading = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload = () => resolve(window.XLSX);
+      s.onerror = () => { _xlsxLoading = null; reject(new Error('Could not load the Excel library')); };
+      document.head.appendChild(s);
+    });
+  }
+  return _xlsxLoading;
+}
+
+async function downloadGstr1() {
+  const btn = document.getElementById('gstDownloadBtn');
+  const errEl = document.getElementById('gstErr');
+  errEl.classList.remove('show');
+  const period = document.getElementById('gstMonth').value;
+  const cfg = getGstSettings();
+  const fail = msg => { errEl.textContent = msg; errEl.classList.add('show'); };
+  if (!period) return fail('Select a month to export.');
+  if (!cfg.state) return fail('Select the seller state in the settings below first.');
+
+  btn.disabled = true; btn.textContent = 'Preparing…';
+  try {
+    // Always export from fresh data
+    const res = await fetch(API_BASE + '/api/admin/orders', { headers: apiHeaders() });
+    if (!res.ok) throw new Error('Could not load orders');
+    const { orders } = await res.json();
+    _orders = orders;
+    previewGstr1();
+
+    const XLSX = await loadXlsx();
+    const r = buildGstr1(orders, period, cfg);
+    const wb = buildGstWorkbook(XLSX, r);
+    XLSX.writeFile(wb, 'TriAkar_GSTR1_' + MON[r.pm - 1] + '-' + r.py + '.xlsx');
+  } catch (err) {
+    fail(err.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Download GSTR-1 (.xlsx)';
+  }
+}
+
+function buildGstWorkbook(XLSX, r) {
+  const wb = XLSX.utils.book_new();
+  const add = (name, rows, widths) => {
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    if (widths) ws['!cols'] = widths.map(w => ({ wch: w }));
+    XLSX.utils.book_append_sheet(wb, ws, name);
+  };
+  const periodLabel = MON[r.pm - 1] + ' ' + r.py;
+  const intra = r.invoices.filter(i => i.supply === 'Intra-State');
+  const inter = r.invoices.filter(i => i.supply === 'Inter-State');
+  const exp   = r.invoices.filter(i => i.supply === 'Export');
+  const b2cl  = inter.filter(i => i.value > B2CL_LIMIT);
+  const sum = (arr, k) => r2(arr.reduce((s, x) => s + x[k], 0));
+
+  // Summary
+  add('Summary', [
+    ['TriAkar — GSTR-1 Sales Summary'],
+    [],
+    ['Return Period', periodLabel],
+    ['Seller GSTIN', r.cfg.gstin || '—'],
+    ['Seller State', posLabel(r.cfg.state)],
+    ['Prices', r.cfg.inclusive ? 'Inclusive of GST' : 'Exclusive of GST'],
+    ['Generated On', new Date().toLocaleString('en-IN')],
+    [],
+    ['', 'Invoices', 'Taxable Value', 'IGST', 'CGST', 'SGST', 'Invoice Value'],
+    ['Intra-State (B2C)', intra.length, sum(intra, 'taxable'), 0, sum(intra, 'cgst'), sum(intra, 'sgst'), sum(intra, 'value')],
+    ['Inter-State (B2C)', inter.length, sum(inter, 'taxable'), sum(inter, 'igst'), 0, 0, sum(inter, 'value')],
+    ['Exports', exp.length, sum(exp, 'taxable'), 0, 0, 0, sum(exp, 'value')],
+    ['Total', r.invoices.length, r.totals.taxable, r.totals.igst, r.totals.cgst, r.totals.sgst, r.totals.value],
+    [],
+    ['Billable orders (confirmed → delivered)', r.billable.length],
+    ['Cancelled orders', r.cancelled.length],
+    ['Unpaid / pending orders (not included)', r.unpaid.length],
+  ], [40, 12, 16, 14, 14, 14, 16]);
+
+  // Sales register — every invoice line
+  const reg = [['Invoice No', 'Invoice Date', 'Order ID', 'Order Status', 'Customer Name', 'Customer Email', 'Customer Phone',
+    'Shipping Address', 'City', 'State', 'PIN Code', 'Country', 'Place of Supply', 'Supply Type',
+    'Product', 'Customization', 'HSN', 'UQC', 'Qty', 'Unit Price', 'Gross Amount', 'GST Rate (%)',
+    'Taxable Value', 'IGST', 'CGST', 'SGST', 'Line Total', 'Payment Ref', 'Remarks']];
+  r.lines.forEach(l => {
+    const o = l.inv.order, a = (o.shipping_address && typeof o.shipping_address === 'object') ? o.shipping_address : {}, p = o.profiles || {};
+    reg.push([l.inv.no, gstDate(o.created_at), o.id, o.status, a.name || p.full_name || '', p.email || a.email || '', a.phone || p.phone || '',
+      [a.line1, a.line2].filter(Boolean).join(', '), a.city || '', a.state || '', a.postal_code || a.pincode || '', a.country || '',
+      l.inv.supply === 'Export' ? '96-Foreign Country' : posLabel(l.inv.pos), l.inv.supply,
+      l.name, l.notes, l.hsn, 'NOS-NUMBERS', l.qty, l.unit, l.gross, l.rate,
+      l.taxable, l.igst, l.cgst, l.sgst, l.total, o.stripe_payment_intent_id || '',
+      [l.inv.posAssumed ? 'State missing — assumed intra-state' : '', l.inv.supply === 'Export' ? 'Export under LUT (rate ' + l.exportRate + '%)' : ''].filter(Boolean).join('; ')]);
+  });
+  add('Sales Register', reg, [14, 13, 38, 11, 22, 28, 15, 36, 14, 16, 10, 9, 22, 12, 30, 24, 9, 13, 6, 11, 12, 10, 13, 11, 11, 11, 12, 30, 34]);
+
+  // Invoice-wise
+  const invRows = [['Invoice No', 'Invoice Date', 'Order ID', 'Customer Name', 'Customer Email', 'Place of Supply', 'Supply Type',
+    'Items', 'Taxable Value', 'IGST', 'CGST', 'SGST', 'Invoice Value', 'Order Total', 'Status', 'Payment Ref', 'Remarks']];
+  r.invoices.forEach(i => {
+    const o = i.order, a = (o.shipping_address && typeof o.shipping_address === 'object') ? o.shipping_address : {}, p = o.profiles || {};
+    const diff = r2(Number(o.total_amount || 0) - i.value);
+    invRows.push([i.no, gstDate(o.created_at), o.id, a.name || p.full_name || '', p.email || '',
+      i.supply === 'Export' ? '96-Foreign Country' : posLabel(i.pos), i.supply,
+      (o.order_items || []).reduce((s, x) => s + (Number(x.quantity) || 0), 0),
+      i.taxable, i.igst, i.cgst, i.sgst, i.value, Number(o.total_amount || 0), o.status, o.stripe_payment_intent_id || '',
+      [i.posAssumed ? 'State missing — assumed intra-state' : '', Math.abs(diff) > 0.05 ? 'Differs from order total by ₹' + diff : ''].filter(Boolean).join('; ')]);
+  });
+  add('Invoices', invRows, [14, 13, 38, 22, 28, 22, 12, 7, 13, 11, 11, 11, 13, 12, 11, 30, 36]);
+
+  // b2cl — GSTR-1 offline tool format
+  const b2clRows = [['Invoice Number', 'Invoice date', 'Invoice Value', 'Place Of Supply', 'Applicable % of Tax Rate', 'Rate', 'Taxable Value', 'Cess Amount', 'E-Commerce GSTIN']];
+  b2cl.forEach(i => Object.keys(i.rates).forEach(rate =>
+    b2clRows.push([i.no, gstDate(i.order.created_at), i.value, posLabel(i.pos), '', Number(rate), i.rates[rate], 0, ''])));
+  add('b2cl', b2clRows, [16, 13, 13, 24, 12, 7, 13, 11, 16]);
+
+  // b2cs — everything domestic that isn't b2cl, grouped by place of supply + rate
+  const b2csMap = {};
+  r.lines.filter(l => l.inv.supply !== 'Export' && !b2cl.includes(l.inv)).forEach(l => {
+    const k = l.inv.pos + '|' + l.rate;
+    b2csMap[k] = b2csMap[k] || { pos: l.inv.pos, rate: l.rate, taxable: 0 };
+    b2csMap[k].taxable = r2(b2csMap[k].taxable + l.taxable);
+  });
+  const b2csRows = [['Type', 'Place Of Supply', 'Applicable % of Tax Rate', 'Rate', 'Taxable Value', 'Cess Amount', 'E-Commerce GSTIN']];
+  Object.values(b2csMap).sort((a, b) => a.pos.localeCompare(b.pos) || a.rate - b.rate)
+    .forEach(g => b2csRows.push(['OE', posLabel(g.pos), '', g.rate, g.taxable, 0, '']));
+  add('b2cs', b2csRows, [6, 26, 12, 7, 13, 11, 16]);
+
+  // exp
+  const expRows = [['Export Type', 'Invoice Number', 'Invoice date', 'Invoice Value', 'Port Code', 'Shipping Bill Number', 'Shipping Bill Date', 'Rate', 'Taxable Value', 'Cess Amount']];
+  exp.forEach(i => expRows.push(['WOPAY', i.no, gstDate(i.order.created_at), i.value, '', '', '', 0, i.taxable, 0]));
+  add('exp', expRows, [11, 16, 13, 13, 10, 18, 16, 6, 13, 11]);
+
+  // hsn — summary by HSN + rate
+  const hsnMap = {};
+  r.lines.forEach(l => {
+    const k = l.hsn + '|' + l.rate;
+    const h = hsnMap[k] = hsnMap[k] || { hsn: l.hsn, rate: l.rate, desc: l.name, qty: 0, value: 0, taxable: 0, igst: 0, cgst: 0, sgst: 0 };
+    if (l.name !== 'Shipping & handling charges') h.qty += l.qty;
+    h.value = r2(h.value + l.total); h.taxable = r2(h.taxable + l.taxable);
+    h.igst = r2(h.igst + l.igst); h.cgst = r2(h.cgst + l.cgst); h.sgst = r2(h.sgst + l.sgst);
+  });
+  const hsnRows = [['HSN', 'Description', 'UQC', 'Total Quantity', 'Total Value', 'Rate', 'Taxable Value', 'Integrated Tax Amount', 'Central Tax Amount', 'State/UT Tax Amount', 'Cess Amount']];
+  Object.values(hsnMap).sort((a, b) => a.hsn.localeCompare(b.hsn) || a.rate - b.rate)
+    .forEach(h => hsnRows.push([h.hsn, '', 'NOS-NUMBERS', h.qty, h.value, h.rate, h.taxable, h.igst, h.cgst, h.sgst, 0]));
+  add('hsn', hsnRows, [10, 20, 13, 13, 13, 6, 13, 18, 17, 17, 11]);
+
+  // docs — invoice series issued during the month
+  const issued = r.billable.concat(r.cancelled).sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+  const docsRows = [['Nature of Document', 'Sr. No. From', 'Sr. No. To', 'Total Number', 'Cancelled']];
+  if (issued.length) docsRows.push(['Invoices for outward supply', invoiceNo(issued[0]), invoiceNo(issued[issued.length - 1]), issued.length, r.cancelled.length]);
+  add('docs', docsRows, [30, 14, 14, 13, 11]);
+
+  return wb;
 }
 </script>
 </body>
